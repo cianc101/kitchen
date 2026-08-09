@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import app from './index.js';
+import { enhancedReceiptScan } from './receipt-scan.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -72,7 +73,9 @@ export default {
     }
 
     try {
-      const response = await app.fetch(request, env, ctx);
+      const response = request.method === 'POST' && url.pathname === '/api/receipts/scan'
+        ? await enhancedReceiptScan(request, env)
+        : await app.fetch(request, env, ctx);
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
