@@ -9,5 +9,12 @@
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kitchen-db",
+      "database_id": "85fd021b-be0c-4de0-b82c-5e5df582c226"
+    }
+  ],
   "observability": { "enabled": true, "head_sampling_rate": 1 }
 }
