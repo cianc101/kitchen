@@ -1,0 +1,9 @@
+{
+  "name": "Kitchen",
+  "short_name": "Kitchen",
+  "description": "Shopping, meals, recipes and pantry in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#11170f",
+  "theme_color": "#11170f"
+}
