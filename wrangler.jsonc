@@ -1,9 +1,15 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "kitchen",
-  "main": "src/index.js",
+  "main": "src/secure.js",
   "compatibility_date": "2026-08-09",
   "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "https://cian-cj11.cloudflareaccess.com",
+    "ACCESS_POLICY_AUD": "REPLACE_WITH_ACCESS_AUD",
+    "DEV_ALLOW_UNAUTHENTICATED": "false"
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
