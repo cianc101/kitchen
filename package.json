@@ -6,8 +6,10 @@
   "scripts": {
     "check": "node --check src/index.js && node --check public/app.js && node --check public/service-worker.js",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "deploy:dry": "wrangler deploy --dry-run"
+    "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote",
+    "deploy:dry": "wrangler deploy --dry-run",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
   },
   "devDependencies": { "wrangler": "^4.0.0" }
 }
