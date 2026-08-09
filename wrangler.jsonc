@@ -7,7 +7,7 @@
   "keep_vars": true,
   "vars": {
     "ACCESS_TEAM_DOMAIN": "https://cian-cj11.cloudflareaccess.com",
-    "ACCESS_POLICY_AUD": "REPLACE_WITH_ACCESS_AUD",
+    "ACCESS_POLICY_AUD": "de29315023c55545344eb3817d8cbfad6d3adeef7a8b22402e9d54a63239694f",
     "DEV_ALLOW_UNAUTHENTICATED": "false"
   },
   "assets": {
