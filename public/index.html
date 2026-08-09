@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#11170f"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Kitchen">
+  <link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/styles.css"><title>Kitchen</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar"><div><span class="eyebrow">FOOD AT HOME</span><h1>Kitchen</h1></div><button id="quickAdd" class="icon-btn">＋</button></header>
+    <main>
+      <section class="screen active" data-screen="home">
+        <div class="hero"><span class="eyebrow">This week</span><h2 id="mealHeadline">What are we eating?</h2><p id="homeSub">Plan meals and keep the shopping list under control.</p></div>
+        <div class="quick-grid"><button class="quick" data-add="shopping"><span>＋</span><b>Shopping</b><small>Add an item</small></button><button class="quick" data-add="meal"><span>◷</span><b>Meal</b><small>Plan a dinner</small></button><button class="quick" data-add="recipe"><span>≡</span><b>Recipe</b><small>Save a favourite</small></button></div>
+        <section class="card"><div class="section-title"><h3>Shopping</h3><span id="shoppingCount">0 items</span></div><div id="homeShopping" class="list"></div></section>
+        <section class="card"><div class="section-title"><h3>Meals ahead</h3><span>Next 7 days</span></div><div id="homeMeals" class="list"></div></section>
+        <section class="card"><div class="section-title"><h3>Running low</h3></div><div id="lowStock" class="list"></div></section>
+      </section>
+
+      <section class="screen" data-screen="shopping"><div class="section-title big"><div><span class="eyebrow">Bring this with you</span><h2>Shopping</h2></div><button class="primary" data-add="shopping">＋ Add</button></div><div id="shoppingList" class="list"></div></section>
+
+      <section class="screen" data-screen="meals"><div class="section-title big"><div><span class="eyebrow">What's for dinner</span><h2>Meals</h2></div><button class="primary" data-add="meal">＋ Add</button></div><div id="mealsList" class="list"></div></section>
+
+      <section class="screen" data-screen="recipes"><div class="section-title big"><div><span class="eyebrow">Keep the good ones</span><h2>Recipes</h2></div><button class="primary" data-add="recipe">＋ Add</button></div><input id="recipeSearch" class="search" type="search" placeholder="Search recipes or ingredients…"><div id="recipesList" class="recipe-grid"></div></section>
+
+      <section class="screen" data-screen="pantry"><div class="section-title big"><div><span class="eyebrow">Freezer · Fridge · Cupboard</span><h2>Pantry</h2></div><button class="primary" data-add="pantry">＋ Add</button></div><div id="pantryList" class="list"></div></section>
+    </main>
+  </div>
+  <nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span><small>Home</small></button><button class="tab" data-tab="shopping"><span>✓</span><small>Shopping</small></button><button class="tab" data-tab="meals"><span>◷</span><small>Meals</small></button><button class="tab" data-tab="recipes"><span>≡</span><small>Recipes</small></button><button class="tab" data-tab="pantry"><span>□</span><small>Pantry</small></button></nav>
+
+  <dialog id="shoppingDialog" class="sheet"><form id="shoppingForm" class="sheet-panel"><div class="handle"></div><div class="sheet-head"><div><span class="eyebrow">Shopping list</span><h2>Add item</h2></div><button type="button" class="icon-btn" data-close>×</button></div><label>Item<input name="name" required autofocus></label><div class="grid2"><label>Quantity<input name="quantity" placeholder="2 / 500g"></label><label>Shop<input name="shop" placeholder="Aldi"></label></div><label>Category<input name="category" placeholder="Fruit & veg"></label><button class="primary wide">Add to list</button></form></dialog>
+
+  <dialog id="mealDialog" class="sheet"><form id="mealForm" class="sheet-panel"><div class="handle"></div><div class="sheet-head"><div><span class="eyebrow">Meal plan</span><h2>Plan meal</h2></div><button type="button" class="icon-btn" data-close>×</button></div><label>Meal<input name="title" required placeholder="Chicken curry"></label><div class="grid2"><label>Date<input name="meal_date" type="date" required></label><label>Type<select name="meal_type"><option>Dinner</option><option>Lunch</option><option>Breakfast</option></select></label></div><label>Notes<textarea name="notes" rows="3"></textarea></label><button class="primary wide">Save meal</button></form></dialog>
+
+  <dialog id="recipeDialog" class="sheet"><form id="recipeForm" class="sheet-panel"><div class="handle"></div><div class="sheet-head"><div><span class="eyebrow">Recipe book</span><h2>Save recipe</h2></div><button type="button" class="icon-btn" data-close>×</button></div><label>Name<input name="name" required></label><label>Ingredients<textarea name="ingredients" rows="6" placeholder="One ingredient per line"></textarea></label><label>Method<textarea name="instructions" rows="7"></textarea></label><label>Source<input name="source" placeholder="Family recipe / website"></label><label class="check"><input name="favourite" type="checkbox"><span>Favourite</span></label><button class="primary wide">Save recipe</button></form></dialog>
+
+  <dialog id="pantryDialog" class="sheet"><form id="pantryForm" class="sheet-panel"><div class="handle"></div><div class="sheet-head"><div><span class="eyebrow">Pantry</span><h2>Add stock</h2></div><button type="button" class="icon-btn" data-close>×</button></div><label>Item<input name="name" required></label><div class="grid2"><label>Quantity<input name="quantity" type="number" step="0.01"></label><label>Unit<input name="unit" placeholder="packs / kg"></label></div><div class="grid2"><label>Location<input name="location" placeholder="Freezer"></label><label>Low stock at<input name="low_stock_at" type="number" step="0.01"></label></div><button class="primary wide">Save pantry item</button></form></dialog>
+
+  <div id="toast" class="toast"></div><script type="module" src="/app.js"></script>
+</body>
+</html>
