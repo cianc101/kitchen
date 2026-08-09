@@ -1,90 +1,16 @@
 const JSON_HEADERS={"content-type":"application/json; charset=utf-8","cache-control":"no-store"};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:JSON_HEADERS});
-const now=()=>new Date().toISOString();
-const text=(value,fallback='')=>typeof value==='string'?value.trim():fallback;
+const now=()=>new Date().toISOString(),text=(v,f='')=>typeof v==='string'?v.trim():f,num=v=>v===''||v==null?null:Number(v);
 const setupError=()=>json({ok:false,error:'setup-required',message:'Cloudflare D1 has not been connected to Kitchen yet.'},503);
-async function body(request){if(!(request.headers.get('content-type')||'').includes('application/json'))throw new Error('Expected JSON request body');return request.json()}
-
-async function shopping(request,env){
- if(!env.DB)return setupError();
- if(request.method==='GET'){
-  const result=await env.DB.prepare('SELECT * FROM shopping_items ORDER BY checked ASC, COALESCE(shop,\'\'), created_at DESC').all();
-  return json({ok:true,items:result.results||[]});
- }
- if(request.method==='POST'){
-  const input=await body(request);const name=text(input.name);if(!name)return json({ok:false,error:'validation',message:'Item name is required.'},400);
-  const id=crypto.randomUUID(),stamp=now();
-  await env.DB.prepare('INSERT INTO shopping_items (id,name,quantity,shop,category,checked,created_at,updated_at) VALUES (?,?,?,?,?,0,?,?)').bind(id,name,text(input.quantity),text(input.shop),text(input.category),stamp,stamp).run();
-  return json({ok:true,id},201);
- }
- return json({ok:false,error:'method-not-allowed'},405);
-}
-async function shoppingItem(request,env,id){
- if(!env.DB)return setupError();
- if(request.method==='PATCH'){
-  const input=await body(request);const current=await env.DB.prepare('SELECT * FROM shopping_items WHERE id=?').bind(id).first();if(!current)return json({ok:false,error:'not-found'},404);
-  await env.DB.prepare('UPDATE shopping_items SET name=?,quantity=?,shop=?,category=?,checked=?,updated_at=? WHERE id=?').bind(text(input.name??current.name),text(input.quantity??current.quantity),text(input.shop??current.shop),text(input.category??current.category),input.checked==null?Number(current.checked):(input.checked?1:0),now(),id).run();
-  return json({ok:true});
- }
- if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM shopping_items WHERE id=?').bind(id).run();return json({ok:true});}
- return json({ok:false,error:'method-not-allowed'},405);
-}
-
-async function meals(request,env,url){
- if(!env.DB)return setupError();
- if(request.method==='GET'){
-  const from=url.searchParams.get('from')||new Date().toISOString().slice(0,10);const to=url.searchParams.get('to')||'9999-12-31';
-  const result=await env.DB.prepare('SELECT * FROM meals WHERE meal_date BETWEEN ? AND ? ORDER BY meal_date, CASE meal_type WHEN \'Breakfast\' THEN 0 WHEN \'Lunch\' THEN 1 ELSE 2 END').bind(from,to).all();return json({ok:true,meals:result.results||[]});
- }
- if(request.method==='POST'){
-  const input=await body(request);const title=text(input.title);if(!title||!input.meal_date)return json({ok:false,error:'validation',message:'Meal and date are required.'},400);const id=crypto.randomUUID(),stamp=now();
-  await env.DB.prepare('INSERT INTO meals (id,meal_date,meal_type,title,recipe_id,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,input.meal_date,text(input.meal_type,'Dinner')||'Dinner',title,input.recipe_id||null,text(input.notes),stamp,stamp).run();return json({ok:true,id},201);
- }
- return json({ok:false,error:'method-not-allowed'},405);
-}
-async function mealById(request,env,id){if(!env.DB)return setupError();if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM meals WHERE id=?').bind(id).run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
-
-async function recipes(request,env,url){
- if(!env.DB)return setupError();
- if(request.method==='GET'){
-  const q=text(url.searchParams.get('q')).toLowerCase();let result;if(q){const like=`%${q}%`;result=await env.DB.prepare('SELECT * FROM recipes WHERE LOWER(name) LIKE ? OR LOWER(ingredients) LIKE ? ORDER BY favourite DESC,name').bind(like,like).all()}else result=await env.DB.prepare('SELECT * FROM recipes ORDER BY favourite DESC,name').all();return json({ok:true,recipes:result.results||[]});
- }
- if(request.method==='POST'){
-  const input=await body(request);const name=text(input.name);if(!name)return json({ok:false,error:'validation',message:'Recipe name is required.'},400);const id=crypto.randomUUID(),stamp=now();await env.DB.prepare('INSERT INTO recipes (id,name,ingredients,instructions,source,favourite,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,name,text(input.ingredients),text(input.instructions),text(input.source),input.favourite?1:0,stamp,stamp).run();return json({ok:true,id},201);
- }
- return json({ok:false,error:'method-not-allowed'},405);
-}
-
-async function pantry(request,env){
- if(!env.DB)return setupError();
- if(request.method==='GET'){const result=await env.DB.prepare('SELECT *, CASE WHEN low_stock_at IS NOT NULL AND quantity IS NOT NULL AND quantity <= low_stock_at THEN 1 ELSE 0 END AS low_stock FROM pantry_items ORDER BY low_stock DESC,name').all();return json({ok:true,items:result.results||[]})}
- if(request.method==='POST'){
-  const input=await body(request);const name=text(input.name);if(!name)return json({ok:false,error:'validation',message:'Pantry item name is required.'},400);const id=crypto.randomUUID(),stamp=now();const numberOrNull=(v)=>v===''||v==null?null:Number(v);await env.DB.prepare('INSERT INTO pantry_items (id,name,quantity,unit,location,low_stock_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,name,numberOrNull(input.quantity),text(input.unit),text(input.location),numberOrNull(input.low_stock_at),stamp,stamp).run();return json({ok:true,id},201);
- }
- return json({ok:false,error:'method-not-allowed'},405);
-}
-async function pantryById(request,env,id){if(!env.DB)return setupError();if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM pantry_items WHERE id=?').bind(id).run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
-
-async function dashboard(env){
- if(!env.DB)return setupError();const today=new Date().toISOString().slice(0,10);const horizon=new Date(Date.now()+6*86400000).toISOString().slice(0,10);
- const [shoppingResult,mealResult,lowResult,recipeCount]=await Promise.all([
-  env.DB.prepare('SELECT * FROM shopping_items WHERE checked=0 ORDER BY created_at DESC LIMIT 8').all(),
-  env.DB.prepare('SELECT * FROM meals WHERE meal_date BETWEEN ? AND ? ORDER BY meal_date LIMIT 14').bind(today,horizon).all(),
-  env.DB.prepare('SELECT * FROM pantry_items WHERE low_stock_at IS NOT NULL AND quantity IS NOT NULL AND quantity <= low_stock_at ORDER BY name LIMIT 8').all(),
-  env.DB.prepare('SELECT COUNT(*) AS count FROM recipes').first()
- ]);
- return json({ok:true,shopping:shoppingResult.results||[],meals:mealResult.results||[],low_stock:lowResult.results||[],recipe_count:Number(recipeCount?.count||0)});
-}
-
-export default{async fetch(request,env){const url=new URL(request.url);if(!url.pathname.startsWith('/api/'))return env.ASSETS.fetch(request);try{
- if(url.pathname==='/api/health')return json({ok:true,db:Boolean(env.DB)});
- if(url.pathname==='/api/dashboard'&&request.method==='GET')return dashboard(env);
- if(url.pathname==='/api/shopping')return shopping(request,env);
- if(url.pathname==='/api/meals')return meals(request,env,url);
- if(url.pathname==='/api/recipes')return recipes(request,env,url);
- if(url.pathname==='/api/pantry')return pantry(request,env);
- let m=url.pathname.match(/^\/api\/shopping\/([^/]+)$/);if(m)return shoppingItem(request,env,m[1]);
- m=url.pathname.match(/^\/api\/meals\/([^/]+)$/);if(m)return mealById(request,env,m[1]);
- m=url.pathname.match(/^\/api\/pantry\/([^/]+)$/);if(m)return pantryById(request,env,m[1]);
- return json({ok:false,error:'not-found'},404);
- }catch(error){console.error(JSON.stringify({app:'kitchen',path:url.pathname,error:error instanceof Error?error.message:String(error)}));return json({ok:false,error:'request-failed',message:error instanceof Error?error.message:'Request failed.'},500)}}};
+async function body(r){if(!(r.headers.get('content-type')||'').includes('application/json'))throw new Error('Expected JSON request body');return r.json()}
+async function shopping(request,env){if(!env.DB)return setupError();if(request.method==='GET'){const r=await env.DB.prepare("SELECT * FROM shopping_items ORDER BY checked ASC, COALESCE(shop,''), created_at DESC").all();return json({ok:true,items:r.results||[]})}if(request.method==='POST'){const b=await body(request),name=text(b.name);if(!name)return json({ok:false,message:'Item name is required.'},400);const id=crypto.randomUUID(),s=now();await env.DB.prepare('INSERT INTO shopping_items (id,name,quantity,shop,category,checked,created_at,updated_at) VALUES (?,?,?,?,?,0,?,?)').bind(id,name,text(b.quantity),text(b.shop),text(b.category),s,s).run();return json({ok:true,id},201)}if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM shopping_items WHERE checked=1').run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
+async function shoppingItem(request,env,id){if(!env.DB)return setupError();const cur=await env.DB.prepare('SELECT * FROM shopping_items WHERE id=?').bind(id).first();if(!cur)return json({ok:false,error:'not-found'},404);if(request.method==='PATCH'){const b=await body(request);await env.DB.prepare('UPDATE shopping_items SET name=?,quantity=?,shop=?,category=?,checked=?,updated_at=? WHERE id=?').bind(text(b.name??cur.name),text(b.quantity??cur.quantity),text(b.shop??cur.shop),text(b.category??cur.category),b.checked==null?Number(cur.checked):(b.checked?1:0),now(),id).run();return json({ok:true})}if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM shopping_items WHERE id=?').bind(id).run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
+async function meals(request,env,url){if(!env.DB)return setupError();if(request.method==='GET'){const from=url.searchParams.get('from')||new Date().toISOString().slice(0,10),to=url.searchParams.get('to')||'9999-12-31';const r=await env.DB.prepare("SELECT * FROM meals WHERE meal_date BETWEEN ? AND ? ORDER BY meal_date, CASE meal_type WHEN 'Breakfast' THEN 0 WHEN 'Lunch' THEN 1 ELSE 2 END").bind(from,to).all();return json({ok:true,meals:r.results||[]})}if(request.method==='POST'){const b=await body(request),title=text(b.title);if(!title||!b.meal_date)return json({ok:false,message:'Meal and date are required.'},400);const id=crypto.randomUUID(),s=now();await env.DB.prepare('INSERT INTO meals (id,meal_date,meal_type,title,recipe_id,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,b.meal_date,text(b.meal_type,'Dinner')||'Dinner',title,b.recipe_id||null,text(b.notes),s,s).run();return json({ok:true,id},201)}return json({ok:false,error:'method-not-allowed'},405)}
+async function mealById(request,env,id){if(!env.DB)return setupError();const cur=await env.DB.prepare('SELECT * FROM meals WHERE id=?').bind(id).first();if(!cur)return json({ok:false,error:'not-found'},404);if(request.method==='PATCH'){const b=await body(request);await env.DB.prepare('UPDATE meals SET meal_date=?,meal_type=?,title=?,recipe_id=?,notes=?,updated_at=? WHERE id=?').bind(b.meal_date??cur.meal_date,text(b.meal_type??cur.meal_type,'Dinner'),text(b.title??cur.title),b.recipe_id===undefined?cur.recipe_id:(b.recipe_id||null),text(b.notes??cur.notes),now(),id).run();return json({ok:true})}if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM meals WHERE id=?').bind(id).run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
+async function recipes(request,env,url){if(!env.DB)return setupError();if(request.method==='GET'){const q=text(url.searchParams.get('q')).toLowerCase();let r;if(q){const like=`%${q}%`;r=await env.DB.prepare('SELECT * FROM recipes WHERE LOWER(name) LIKE ? OR LOWER(ingredients) LIKE ? ORDER BY favourite DESC,name').bind(like,like).all()}else r=await env.DB.prepare('SELECT * FROM recipes ORDER BY favourite DESC,name').all();return json({ok:true,recipes:r.results||[]})}if(request.method==='POST'){const b=await body(request),name=text(b.name);if(!name)return json({ok:false,message:'Recipe name is required.'},400);const id=crypto.randomUUID(),s=now();await env.DB.prepare('INSERT INTO recipes (id,name,ingredients,instructions,source,favourite,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,name,text(b.ingredients),text(b.instructions),text(b.source),b.favourite?1:0,s,s).run();return json({ok:true,id},201)}return json({ok:false,error:'method-not-allowed'},405)}
+async function recipeById(request,env,id){if(!env.DB)return setupError();const cur=await env.DB.prepare('SELECT * FROM recipes WHERE id=?').bind(id).first();if(!cur)return json({ok:false,error:'not-found'},404);if(request.method==='GET')return json({ok:true,recipe:cur});if(request.method==='PATCH'){const b=await body(request);await env.DB.prepare('UPDATE recipes SET name=?,ingredients=?,instructions=?,source=?,favourite=?,updated_at=? WHERE id=?').bind(text(b.name??cur.name),text(b.ingredients??cur.ingredients),text(b.instructions??cur.instructions),text(b.source??cur.source),b.favourite==null?Number(cur.favourite):(b.favourite?1:0),now(),id).run();return json({ok:true})}if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM recipes WHERE id=?').bind(id).run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
+async function recipeToShopping(env,id){const r=await env.DB.prepare('SELECT ingredients FROM recipes WHERE id=?').bind(id).first();if(!r)return json({ok:false,error:'not-found'},404);const lines=String(r.ingredients||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,60),s=now();for(const line of lines){await env.DB.prepare('INSERT INTO shopping_items (id,name,quantity,shop,category,checked,created_at,updated_at) VALUES (?,?,\'\',\'\',\'Recipe\',0,?,?)').bind(crypto.randomUUID(),line,s,s).run()}return json({ok:true,added:lines.length})}
+async function pantry(request,env){if(!env.DB)return setupError();if(request.method==='GET'){const r=await env.DB.prepare('SELECT *, CASE WHEN low_stock_at IS NOT NULL AND quantity IS NOT NULL AND quantity <= low_stock_at THEN 1 ELSE 0 END AS low_stock FROM pantry_items ORDER BY low_stock DESC,name').all();return json({ok:true,items:r.results||[]})}if(request.method==='POST'){const b=await body(request),name=text(b.name);if(!name)return json({ok:false,message:'Pantry item name is required.'},400);const id=crypto.randomUUID(),s=now();await env.DB.prepare('INSERT INTO pantry_items (id,name,quantity,unit,location,low_stock_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,name,num(b.quantity),text(b.unit),text(b.location),num(b.low_stock_at),s,s).run();return json({ok:true,id},201)}return json({ok:false,error:'method-not-allowed'},405)}
+async function pantryById(request,env,id){if(!env.DB)return setupError();const cur=await env.DB.prepare('SELECT * FROM pantry_items WHERE id=?').bind(id).first();if(!cur)return json({ok:false,error:'not-found'},404);if(request.method==='PATCH'){const b=await body(request);await env.DB.prepare('UPDATE pantry_items SET name=?,quantity=?,unit=?,location=?,low_stock_at=?,updated_at=? WHERE id=?').bind(text(b.name??cur.name),b.quantity===undefined?cur.quantity:num(b.quantity),text(b.unit??cur.unit),text(b.location??cur.location),b.low_stock_at===undefined?cur.low_stock_at:num(b.low_stock_at),now(),id).run();return json({ok:true})}if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM pantry_items WHERE id=?').bind(id).run();return json({ok:true})}return json({ok:false,error:'method-not-allowed'},405)}
+async function dashboard(env){if(!env.DB)return setupError();const t=new Date().toISOString().slice(0,10),h=new Date(Date.now()+6*86400000).toISOString().slice(0,10);const [s,m,l,rc,pc]=await Promise.all([env.DB.prepare('SELECT * FROM shopping_items WHERE checked=0 ORDER BY created_at DESC LIMIT 8').all(),env.DB.prepare('SELECT * FROM meals WHERE meal_date BETWEEN ? AND ? ORDER BY meal_date LIMIT 14').bind(t,h).all(),env.DB.prepare('SELECT * FROM pantry_items WHERE low_stock_at IS NOT NULL AND quantity IS NOT NULL AND quantity <= low_stock_at ORDER BY name LIMIT 8').all(),env.DB.prepare('SELECT COUNT(*) AS count FROM recipes').first(),env.DB.prepare('SELECT COUNT(*) AS count FROM pantry_items').first()]);return json({ok:true,shopping:s.results||[],meals:m.results||[],low_stock:l.results||[],recipe_count:Number(rc?.count||0),pantry_count:Number(pc?.count||0)})}
+export default{async fetch(request,env){const url=new URL(request.url),p=url.pathname;if(!p.startsWith('/api/'))return env.ASSETS.fetch(request);try{if(p==='/api/health')return json({ok:true,db:Boolean(env.DB)});if(p==='/api/dashboard'&&request.method==='GET')return dashboard(env);if(p==='/api/shopping')return shopping(request,env);if(p==='/api/meals')return meals(request,env,url);if(p==='/api/recipes')return recipes(request,env,url);if(p==='/api/pantry')return pantry(request,env);let m=p.match(/^\/api\/shopping\/([^/]+)$/);if(m)return shoppingItem(request,env,m[1]);m=p.match(/^\/api\/meals\/([^/]+)$/);if(m)return mealById(request,env,m[1]);m=p.match(/^\/api\/recipes\/([^/]+)\/shopping$/);if(m&&request.method==='POST')return recipeToShopping(env,m[1]);m=p.match(/^\/api\/recipes\/([^/]+)$/);if(m)return recipeById(request,env,m[1]);m=p.match(/^\/api\/pantry\/([^/]+)$/);if(m)return pantryById(request,env,m[1]);return json({ok:false,error:'not-found'},404)}catch(error){console.error(JSON.stringify({app:'kitchen',path:p,error:error instanceof Error?error.message:String(error)}));return json({ok:false,error:'request-failed',message:error instanceof Error?error.message:'Request failed.'},500)}}};
