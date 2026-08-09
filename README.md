@@ -16,4 +16,6 @@ This project uses Wrangler automatic resource provisioning (Wrangler 4.45+). On 
 
 Use `npm run deploy` as the Cloudflare deploy command.
 
+Deployment is connected to Cloudflare Workers from the `main` branch.
+
 Before adding personal data, configure Cloudflare Access and replace `REPLACE_WITH_ACCESS_AUD` in `wrangler.jsonc` with the Access Application Audience tag. Production fails closed until Access is configured.
